@@ -59,8 +59,9 @@ func main() {
 		fmt.Println("Dumping files...")
 		simhTape.DumpFiles(*dumpFlag)
 		fmt.Println("...finished.")
+	default:
+		log.Fatalln("ERROR: Must specify an action - create, dump, or scan.  Use -h for help.")
 	}
-
 }
 
 func createImage() {
