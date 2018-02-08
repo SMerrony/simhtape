@@ -1,4 +1,4 @@
-// simhTapeTool is a utility for manipulating SimH-encoded images of tapes for AOS/VS
+// simhtapeTool is a utility for manipulating SimH-encoded images of tapes for AOS/VS
 // systems using the simhtape package.
 
 // Copyright (C) 2018  Steve Merrony
@@ -49,7 +49,7 @@ func main() {
 	switch {
 	case *scanFlag != "":
 		fmt.Printf("Scanning tape file : %s", *scanFlag)
-		fmt.Printf("%s\n", simhTape.ScanImage(*scanFlag, *csvFlag))
+		fmt.Printf("%s\n", simhtape.ScanImage(*scanFlag, *csvFlag))
 	case *createFlag != "":
 		if *csvFlag == false || *definitionFlag == "" {
 			log.Fatal("ERROR: Must specify --csv and provide a --definition file to create new image")
@@ -57,7 +57,7 @@ func main() {
 		createImage()
 	case *dumpFlag != "":
 		fmt.Println("Dumping files...")
-		simhTape.DumpFiles(*dumpFlag)
+		simhtape.DumpFiles(*dumpFlag)
 		fmt.Println("...finished.")
 	default:
 		log.Fatalln("ERROR: Must specify an action - create, dump, or scan.  Use -h for help.")
@@ -103,25 +103,25 @@ func createImage() {
 					log.Fatal(err)
 				}
 				if bytesRead > 0 {
-					simhTape.WriteMetaData(imgFile, uint32(bytesRead)) // block header
+					simhtape.WriteMetaData(imgFile, uint32(bytesRead)) // block header
 					if *vFlag {
 						fmt.Printf(" Wrote Header value: %d...", uint32(bytesRead))
 					}
-					ok := simhTape.WriteRecordData(imgFile, block[0:bytesRead]) // block
+					ok := simhtape.WriteRecordData(imgFile, block[0:bytesRead]) // block
 					if !ok {
 						log.Fatal("ERROR: Error writing image file")
 					}
 					fmt.Printf(".")
-					simhTape.WriteMetaData(imgFile, uint32(bytesRead)) // block trailer
+					simhtape.WriteMetaData(imgFile, uint32(bytesRead)) // block trailer
 					if *vFlag {
 						fmt.Printf(" Wrote Trailer value: %d...", uint32(bytesRead))
 					}
 				}
 				if bytesRead == 0 || err == io.EOF { // End of this file
 					thisSrcFile.Close()
-					simhTape.WriteMetaData(imgFile, simhTape.SimhMtrTmk)
+					simhtape.WriteMetaData(imgFile, simhtape.SimhMtrTmk)
 					if *vFlag {
-						fmt.Printf(" EOF: Wrote Tape Mark value: %d...", simhTape.SimhMtrTmk)
+						fmt.Printf(" EOF: Wrote Tape Mark value: %d...", simhtape.SimhMtrTmk)
 					}
 					break
 				}
@@ -134,9 +134,9 @@ func createImage() {
 	// WriteMetaData(imgFile, 0)
 	// WriteMetaData(imgFile, 0)
 
-	simhTape.WriteMetaData(imgFile, simhTape.SimhMtrEom)
+	simhtape.WriteMetaData(imgFile, simhtape.SimhMtrEom)
 	if *vFlag {
-		fmt.Printf(" EOM: Wrote Tape Mark value: %d...", simhTape.SimhMtrEom)
+		fmt.Printf(" EOM: Wrote Tape Mark value: %d...", simhtape.SimhMtrEom)
 	}
 	imgFile.Close()
 	fmt.Printf("\nDone\n")
