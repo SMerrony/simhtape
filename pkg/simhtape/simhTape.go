@@ -36,6 +36,18 @@ const (
 	SimhMtrMaxlen = 0x00FFFFFF // max len is 24b
 	SimhMtrErf    = 0x80000000 // error flag
 	SimhMaxRecLen = 32768
+
+	// status codes
+	SimhMtStatOk = iota
+	SimhMtStatTmk
+	SimhMtStatUnatt
+	SimhMtStatIOerr
+	SimhMtStatInvRec
+	SimhMtStatInvFmt
+	SimhMtStatBOT
+	SimhMtStatEOM
+	SimhMtStatRecErr
+	SimhMtStatWrOnly
 )
 
 // ReadMetaData reads a four byte (one doubleword) header, trailer, or other metadata record
@@ -54,9 +66,7 @@ func ReadMetaData(imgFile *os.File) (uint32, bool) {
 		log.Printf("ERROR: Wrong length simH Tape Image record header: %d\n", nb)
 		return 0, false
 	}
-	//logging.DebugPrint(logging.DEBUG_LOG,"Debug - Header bytes: %d %d %d %d\n", hdrBytes[0], hdrBytes[1], hdrBytes[2], hdrBytes[3])
-	var hdr uint32
-	hdr = uint32(hdrBytes[3]) << 24
+	hdr := uint32(hdrBytes[3]) << 24
 	hdr |= uint32(hdrBytes[2]) << 16
 	hdr |= uint32(hdrBytes[1]) << 8
 	hdr |= uint32(hdrBytes[0])
@@ -119,15 +129,19 @@ func Rewind(imgFile *os.File) bool {
 }
 
 // SpaceFwd advances the virtual tape by the specified amount (0 means 1 whole file)
-func SpaceFwd(imgFile *os.File, recCnt int) bool {
-	var hdr, trailer uint32
-	done := false
-
+func SpaceFwd(imgFile *os.File, recCnt int16) (simhStat int) {
+	var (
+		hdr, trailer uint32
+		done         bool = false
+	)
+	simhStat = SimhMtStatIOerr // catch unexpected calls
+	switch {
 	// special case when recCnt == 0 which means space forward one file...
-	if recCnt == 0 {
+	case recCnt == 0:
 		for !done {
 			hdr, _ = ReadMetaData(imgFile)
 			if hdr == SimhMtrTmk {
+				simhStat = SimhMtStatOk
 				done = true
 			} else {
 				// read record and throw it away
@@ -139,11 +153,43 @@ func SpaceFwd(imgFile *os.File, recCnt int) bool {
 				}
 			}
 		}
-	} else {
-		log.Fatal("ERROR: simhTape.SpaceFwd called with record count != 0 - Not Yet Implemented")
+	case recCnt < 0:
+		// otherwise word count is a negative number and we space fwd that many records
+		for recCnt != 0 {
+			recCnt++
+			if simhStat = spaceFwd1Rec(imgFile); simhStat != SimhMtStatOk {
+				return simhStat
+			}
+		}
 	}
+	return simhStat
+}
 
-	return true
+func spaceFwd1Rec(imgFile *os.File) (simhStat int) {
+	var (
+		hdr, trailer uint32
+		ok           bool
+	)
+	// read record header
+	if hdr, ok = ReadMetaData(imgFile); !ok {
+		return SimhMtStatEOM
+	}
+	// end of tape file?
+	if hdr == SimhMtrTmk {
+		return SimhMtStatTmk
+	}
+	// read record and discard
+	if _, ok = ReadRecordData(imgFile, int(hdr)); !ok {
+		return SimhMtStatInvRec
+	}
+	// read & check trailer - should match header
+	if trailer, ok = ReadMetaData(imgFile); !ok {
+		return SimhMtStatInvRec
+	}
+	if hdr != trailer {
+		log.Fatal("ERROR: simhTape.SpaceFwd found non-matching header/trailer")
+	}
+	return SimhMtStatOk
 }
 
 // ScanImage - attempt to read a whole tape image ensuring headers, record sizes, and trailers match
