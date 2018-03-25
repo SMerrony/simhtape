@@ -51,7 +51,7 @@ func main() {
 		fmt.Printf("Scanning tape file : %s", *scanFlag)
 		fmt.Printf("%s\n", simhtape.ScanImage(*scanFlag, *csvFlag))
 	case *createFlag != "":
-		if *csvFlag == false || *definitionFlag == "" {
+		if !*csvFlag || *definitionFlag == "" {
 			log.Fatal("ERROR: Must specify --csv and provide a --definition file to create new image")
 		}
 		createImage()
