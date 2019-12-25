@@ -1,7 +1,7 @@
 // simhtapeTool is a utility for manipulating SimH-encoded images of tapes for AOS/VS
 // systems using the simhtape package.
 
-// Copyright (C) 2018  Steve Merrony
+// Copyright (C) 2018,2019  Steve Merrony
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,12 +35,15 @@ import (
 )
 
 var (
-	createFlag     = flag.String("create", "", "Create a new SimH Tape Image file")
-	csvFlag        = flag.Bool("csv", false, "Use/Generate CSV-format data")
-	definitionFlag = flag.String("definition", "", "Use a definition file")
-	dumpFlag       = flag.String("dump", "", "Dump all files in image as blobs in current directory")
-	scanFlag       = flag.String("scan", "", "Scan a SimH Tape Image file for correctness")
-	vFlag          = flag.Bool("v", false, "Be more verbose")
+	// verbs
+	createFlag = flag.String("create", "", "Create a new SimH Tape Image file")
+	dumpFlag   = flag.String("dump", "", "Dump all files in image as blobs in current directory")
+	scanFlag   = flag.String("scan", "", "Scan a SimH Tape Image file for correctness")
+
+	// flags/args
+	csvFlag            = flag.Bool("csv", false, "Generate CSV-format data from scan")
+	fromDefinitionFlag = flag.String("fromDefinition", "", "Use a definition file")
+	vFlag              = flag.Bool("v", false, "Be more verbose")
 )
 
 func main() {
@@ -51,10 +54,12 @@ func main() {
 		fmt.Printf("Scanning tape file : %s", *scanFlag)
 		fmt.Printf("%s\n", simhtape.ScanImage(*scanFlag, *csvFlag))
 	case *createFlag != "":
-		if !*csvFlag || *definitionFlag == "" {
-			log.Fatal("ERROR: Must specify --csv and provide a --definition file to create new image")
+		if *fromDefinitionFlag == "" {
+			log.Fatal("ERROR: Must specify --fromASCIIOctal or --fromDefinition to create new image")
 		}
-		createImage()
+		if *fromDefinitionFlag != "" {
+			createImageFromDefinition()
+		}
 	case *dumpFlag != "":
 		fmt.Println("Dumping files...")
 		simhtape.DumpFiles(*dumpFlag)
@@ -64,10 +69,10 @@ func main() {
 	}
 }
 
-func createImage() {
-	defCSVfile, err := os.Open(*definitionFlag)
+func createImageFromDefinition() {
+	defCSVfile, err := os.Open(*fromDefinitionFlag)
 	if err != nil {
-		log.Fatalf("ERROR: Could not access CSV Definition file %s", *definitionFlag)
+		log.Fatalf("ERROR: Could not access CSV Definition file %s", *fromDefinitionFlag)
 	}
 	defer defCSVfile.Close()
 	csvReader := csv.NewReader(defCSVfile)
